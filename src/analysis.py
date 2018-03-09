@@ -21,16 +21,19 @@ import pandas as pd
 
 START_TIME = time.time()
 # FILENAME = '../data/test_out_copy.tsv'
-FILENAME = '../data/test_out_FINAL.tsv'
+# FILENAME = '../data/test_out_FINAL.tsv'
+FILENAME = '../data/test_jun.tsv'
 
 BUCKET_BOUNDARIES = [0, 1, 10, 100, 500, 1000, 10000, 100000]
 BUCKET_LABELS = ['%s-%s' % (BUCKET_BOUNDARIES[i - 1], BUCKET_BOUNDARIES[i]) for i in range(1, len(BUCKET_BOUNDARIES))]
 
 DF_COLUMNS = ['filetype', 'extension', 'blocks', 'birthtime', 'alive_for_periods', 'is_dead']
-LIFETIME_COLUMN = DF_COLUMNS[4]
 EXTENSION_COLUMN = DF_COLUMNS[1]
+BIRTHTIME_COLUMN = DF_COLUMNS[3]
+LIFETIME_COLUMN = DF_COLUMNS[4]
 IS_DEAD_COLUMN = DF_COLUMNS[5]
-IS_DEAD_INDEX = 5
+# not included in the list because this one is not present in the original .tsv and the primary purpose of the list is
+# to name the columns in that .tsv
 DF_BLOCKSIZE_CATEGORY = 'blocksize_category'
 
 
@@ -163,10 +166,12 @@ def blocksize_stats(df):
     df_blocksize_list: List[pd.DataFrame] = get_blocksize_dataframes(df, state=STATE_CURRENT)
 
     for i in range(len(df_blocksize_list)):
-        print('Block size: %s\n' % BUCKET_LABELS[i])
+        print('Block size: %s' % BUCKET_LABELS[i])
         df_filtered = df_blocksize_list[i]
+        print('count: %d' % len(df_filtered))
         print('stddev for lifetime: ' + str(stddev(df_filtered, LIFETIME_COLUMN)))
         print('mean for lifetime: ' + str(mean(df_filtered, LIFETIME_COLUMN)))
+        print('\n')
 
 
 def filetype_stats(df):
@@ -205,10 +210,19 @@ def filetype_histogram(df: pd.DataFrame):
     # print(group)
     # df_grouped = df.groupby(EXTENSION_COLUMN).count()
     # print(df_grouped)
-    print(df[EXTENSION_COLUMN].value_counts().head(20))
+    print('--HISTOGRAM--')
+    print('COUNT: %s' % len(df))
+    print(len(df))
+    dist = df[EXTENSION_COLUMN].value_counts(dropna=False).head(20)
+    print(dist)
+    print('\n')
+    plt.hist(dist)
+    plt.show()
 
 
 if __name__ == '__main__':
+    start_time = 1520451300
+
     if STATE_CURRENT == state_read:
         df_all_files = get_dataframe(state_read)
         # df_blocksize_list = get_blocksize_dataframes(df_all_files, state=STATE_CURRENT)
@@ -222,6 +236,8 @@ if __name__ == '__main__':
     elif STATE_CURRENT == state_process:
         df_all_files = get_dataframe(state_process)
         df_dead_files = df_all_files[df_all_files[IS_DEAD_COLUMN] == True]
+        df_alive_and_dead_files = df_dead_files[df_dead_files[BIRTHTIME_COLUMN] > start_time]
+
         # blocksize
         blocksize_stats(df_all_files)
         blocksize_stats(df_dead_files)
@@ -231,3 +247,9 @@ if __name__ == '__main__':
         # most common filetypes
         filetype_histogram(df_all_files)
         filetype_histogram(df_dead_files)
+        print('ALIVE AND DEAD')
+        print(df_dead_files[BIRTHTIME_COLUMN].dtype)
+        filetype_histogram(df_alive_and_dead_files)
+
+        print('Count of dead files: %d' % len(df_dead_files))
+        print('Count of alive and dead files: %d' % len(df_alive_and_dead_files))
