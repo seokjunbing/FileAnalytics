@@ -20,7 +20,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 START_TIME = time.time()
-FILENAME = '../data/test_out_copy.tsv'
+# FILENAME = '../data/test_out_copy.tsv'
+FILENAME = '../data/test_out_FINAL.tsv'
 
 BUCKET_BOUNDARIES = [0, 1, 10, 100, 500, 1000, 10000, 100000]
 BUCKET_LABELS = ['%s-%s' % (BUCKET_BOUNDARIES[i - 1], BUCKET_BOUNDARIES[i]) for i in range(1, len(BUCKET_BOUNDARIES))]
@@ -125,10 +126,14 @@ def get_dataframe(state):
         # that do not start with an int. The previous line containing the filename that had a new line in
         # the middle becomes unusable (the columns become NaN after the numeric conversion, but this is fine for now,
         # since we are only looking at statistics for now and the NaN get ignored for those.
+
         # df[IS_DEAD_COLUMN] = df[IS_DEAD_COLUMN].astype(bool)
         # print(df[IS_DEAD_COLUMN].dtype)
         df2 = df[pd.to_numeric(df[index_label], errors='coerce').notnull()]
-        # df2.set_index(index_label)
+        df2.set_index(index_label)
+        df2 = df2.dropna(subset=['birthtime', 'alive_for_periods'])
+        df2['alive_for_periods'] = df2['alive_for_periods'].apply(lambda x: pd.to_numeric(x, errors='coerce'))
+
         # print(df2[IS_DEAD_COLUMN].dtype)
         # df2.to_csv('../data/test_test.tsv', sep='\t', index=0)
         # print(df2[IS_DEAD_COLUMN].dtype)
@@ -190,6 +195,7 @@ def filetype_stats(df):
         df_extension = df[df[EXTENSION_COLUMN].isin(extension_group)]
         print('%s files: %s' % (filetype_names[i], str(extension_group)))
         print('count: %d' % len(df_extension))
+        t = [type(x) for x in df_extension[LIFETIME_COLUMN]]
         print('stddev for lifetime: ' + str(stddev(df_extension, LIFETIME_COLUMN)))
         print('mean for lifetime: ' + str(mean(df_extension, LIFETIME_COLUMN)))
         print('\n')
