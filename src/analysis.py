@@ -44,52 +44,6 @@ ALIVE_OBSERVED_MINUTES_COL = 'alive_for_minutes'
 PREPROCESSED_SUFFIX = '_preprocessed.tsv'
 
 
-# def create_block_vs_lifetime_table(df):
-# df = pd.read_csv('../data/sample.tsv', sep='\t')
-# df = pd.read_csv(FILENAME, sep='\t', header=None, names=DF_COLUMNS)
-# print(df)
-# cut_buckets = {0: '0', 1: '1', 10: '10', 100: '100', 500: '500', 1000: '1000', inf: 'inf'}
-# cut_buckets = {cut_buckets[i]: '%d-%d' % (cut_buckets[i - 1], cut_buckets[i]) for i in range(1, len(cut_buckets))}
-# cuts: pd.Series = pd.cut(
-#     df['blocks'],
-#     bins=BUCKET_BOUNDARIES,
-#     labels=BUCKET_LABELS
-# )
-# df['blocksize_category'] = cuts  # add a new column, with the blocksize category
-# return df, cuts.value_counts()
-
-# table = []  # the entries will go here
-# for entry in table:
-#     filename, extension, is_alive, birth_time, periods_alive = entry
-# if file_in_range(is_alive, birth_time, periods_alive):
-#     pass
-
-def get_blocksize_dataframes(df: pd.DataFrame, state: str, column='blocksize_category'):
-    """
-    :param df: data frame
-    :param state: read or process; first read or subsequent processes
-    :param column:
-    :return:
-    """
-    df_blocksize_list = []
-
-    if state == state_read:
-        for i in range(len(BUCKET_LABELS)):
-            df_filtered = df[df['%s' % BLOCKSIZE_CATEGORY_COL] == BUCKET_LABELS[i]]
-            df_blocksize_list.append(df_filtered)
-            filename = '../data/block%s.tsv' % BUCKET_LABELS[i]
-            df_filtered.to_csv(filename, sep='\t')
-
-    elif state == state_process:
-        for i in range(len(BUCKET_LABELS)):
-            filename = '../data/block%s.tsv' % BUCKET_LABELS[i]
-            print('about to read %s' % filename)
-            df_filtered = pd.read_csv(filename, sep='\t')
-            df_blocksize_list.append(df_filtered)
-
-    return df_blocksize_list
-
-
 def preprocess_data(end_time):
     index_label = 'num'
     is_dead_index = 5
@@ -135,9 +89,6 @@ def get_dataframe(state, filename, end_time=None):
     # that do not start with an int. The previous line containing the filename that had a new line in
     # the middle becomes unusable (the columns become NaN after the numeric conversion, but this is fine for now,
     # since we are only looking at statistics for now and the NaN get ignored for those.
-
-    # df[IS_DEAD_COLUMN] = df[IS_DEAD_COLUMN].astype(bool)
-    # print(df[IS_DEAD_COLUMN].dtype)
     df2 = df[pd.to_numeric(df[index_label], errors='coerce').notnull()]
     df2.set_index(index_label)
     df2 = df2.dropna(subset=['birthtime', 'alive_for_periods'])
@@ -241,12 +192,9 @@ def filetype_stats(df: pd.DataFrame, label: str):
     ]
     for i in range(len(filetypes_all)):
         extension_group = filetypes_all[i]
-        # df_extension = df[df[EXTENSION_COLUMN].isin(extension_group)]
-        # for extension_group in filetypes_all:
         df_extension = df[df[EXTENSION_COL].isin(extension_group)]
         print('%s files: %s' % (filetype_names[i], str(extension_group)))
         print('count: %d' % len(df_extension))
-        t = [type(x) for x in df_extension[ALIVE_FOR_COL]]
         print('stddev for lifetime: ' + str(stddev(df_extension, ALIVE_FOR_COL)))
         print('mean for lifetime: ' + str(mean(df_extension, ALIVE_FOR_COL)))
         print('\n')
@@ -279,27 +227,6 @@ def filetype_histogram(df: pd.DataFrame, mode: str, label: str):
         stddev_val = df_filtered[selection_col].std()
         mean_list.append(mean_val)
         stddev_list.append(stddev_val)
-
-    # if mode == 'days':
-    #     for ext, count in dist.iteritems():
-    #         # ext_list.append(ext)
-    #         # count_list.append(count)
-    #         df_filtered = df[df[EXTENSION_COL] == ext]
-    #         mean_val = df_filtered[TOTAL_LIFETIME_DAYS_COL].mean()
-    #         stddev_val = df_filtered[TOTAL_LIFETIME_DAYS_COL].std()
-    #         mean_list.append(mean_val)
-    #         stddev_list.append(stddev_val)
-    #
-    # elif mode == 'minutes':
-    #     for ext, count in dist.iteritems():
-    #         print(ext)
-    #         # ext_list.append(ext)
-    #         # count_list.append(count)
-    #         df_filtered = df[df[EXTENSION_COL] == ext]
-    #         mean_val = df_filtered[ALIVE_OBSERVED_MINUTES_COL].mean()
-    #         stddev_val = df_filtered[ALIVE_OBSERVED_MINUTES_COL].std()
-    #         mean_list.append(mean_val)
-    #         stddev_list.append(stddev_val)
 
     df_stats = pd.DataFrame()
     df_stats['extension'] = ext_list
