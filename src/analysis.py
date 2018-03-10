@@ -257,34 +257,49 @@ def filetype_histogram(df: pd.DataFrame, mode: str, label: str):
     Instead of clustering the files by type, get the top 20 file types
     by count and do stats on those
     """
+    assert mode in ['minutes', 'days']
+
     print('--HISTOGRAM--')
     print('-%s-' % label)
-    dist: pd.Series = df[EXTENSION_COL].value_counts(dropna=False).head(20)
-    ext_list = []
+    dist: pd.Series = df[EXTENSION_COL].value_counts(dropna=False).head(10)
+    ext_list, count_list = zip(*[(ext, count) for ext, count in dist.iteritems()])
     mean_list = []
     stddev_list = []
-    count_list = []
 
-    if mode == 'days':
-        for ext, count in dist.iteritems():
-            ext_list.append(ext)
-            count_list.append(count)
+    for ext, count in dist.iteritems():
+        # str(ext) so that nan (which is a float) gets converted to a string, just like all the other values in the column
+        if str(ext).lower() == 'nan':
+            df_filtered = df[df[EXTENSION_COL].isna()]
+        else:
             df_filtered = df[df[EXTENSION_COL] == ext]
-            mean_val = df_filtered[TOTAL_LIFETIME_DAYS_COL].dropna().mean()
-            stddev_val = df_filtered[TOTAL_LIFETIME_DAYS_COL].dropna().std()
-            mean_list.append(mean_val)
-            stddev_list.append(stddev_val)
 
-    elif mode == 'minutes':
-        for ext, count in dist.iteritems():
-            print(ext)
-            ext_list.append(ext)
-            count_list.append(count)
-            df_filtered = df[df[EXTENSION_COL] == ext]
-            mean_val = df_filtered[ALIVE_OBSERVED_MINUTES_COL].dropna().mean()
-            stddev_val = df_filtered[ALIVE_OBSERVED_MINUTES_COL].dropna().std()
-            mean_list.append(mean_val)
-            stddev_list.append(stddev_val)
+        selection_col = TOTAL_LIFETIME_DAYS_COL if mode == 'days' else ALIVE_OBSERVED_MINUTES_COL
+
+        mean_val = df_filtered[selection_col].mean()
+        stddev_val = df_filtered[selection_col].std()
+        mean_list.append(mean_val)
+        stddev_list.append(stddev_val)
+
+    # if mode == 'days':
+    #     for ext, count in dist.iteritems():
+    #         # ext_list.append(ext)
+    #         # count_list.append(count)
+    #         df_filtered = df[df[EXTENSION_COL] == ext]
+    #         mean_val = df_filtered[TOTAL_LIFETIME_DAYS_COL].mean()
+    #         stddev_val = df_filtered[TOTAL_LIFETIME_DAYS_COL].std()
+    #         mean_list.append(mean_val)
+    #         stddev_list.append(stddev_val)
+    #
+    # elif mode == 'minutes':
+    #     for ext, count in dist.iteritems():
+    #         print(ext)
+    #         # ext_list.append(ext)
+    #         # count_list.append(count)
+    #         df_filtered = df[df[EXTENSION_COL] == ext]
+    #         mean_val = df_filtered[ALIVE_OBSERVED_MINUTES_COL].mean()
+    #         stddev_val = df_filtered[ALIVE_OBSERVED_MINUTES_COL].std()
+    #         mean_list.append(mean_val)
+    #         stddev_list.append(stddev_val)
 
     df_stats = pd.DataFrame()
     df_stats['extension'] = ext_list
@@ -323,7 +338,6 @@ if __name__ == '__main__':
 
     # matplotlib is giving us a lot of trouble on standalone python scripts.
     # See the attached notebook graphs.py.ipynb for our graph creation process
-
     # df_created_and_deleted.hist(column='alive_for_periods')
     # plt.plot()
 
@@ -333,7 +347,7 @@ if __name__ == '__main__':
     blocksize_stats(df_all, 'ALL FILES', verbose)
     blocksize_stats(df_deleted, 'FILES CREATED AND DELETED WHILE BEING MONITORED', verbose)
     blocksize_stats(df_not_created_and_deleted, 'FILES CREATED BEFORE MONITORING, DELETED DURING MONITORING', verbose)
-    # age stats per filetype group (image files, developer files, temporary files, etc.)
+    # # age stats per filetype group (image files, developer files, temporary files, etc.)
     filetype_stats(df_all, 'ALL FILES')
     filetype_stats(df_created_and_deleted, 'FILES CREATED AND DELETED WHILE BEING MONITORED')
     filetype_stats(df_not_created_and_deleted, 'FILES CREATED BEFORE MONITORING, DELETED DURING MONITORING')
