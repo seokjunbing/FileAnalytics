@@ -1,15 +1,14 @@
 """
-What are some things that we would want to possibly do?
-Modeling:
-* Correlation between block size and file lifetime
-*
+Author: Juan C. Torres
+Date: 03/2018
 
-FILETYPE
-EXTENSION
-BLOCKS
-BIRTHTIME
-ALIVE_FOR_PERIODS
-IS_DEAD
+Analysis code for the data gathered about the lifetimes for the files in our system.
+Run:
+    After gathering data with monitor.py in ../data/, run this
+Requires:
+    python 3
+        pandas
+        matplotlib
 """
 
 import time
