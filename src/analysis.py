@@ -23,8 +23,8 @@ DATASET = 'jun'  # 'juan' or 'jun'
 FILENAME = '../data/test_%s.tsv' % DATASET
 
 # we will split our dataset into smaller datasets to generate descriptive statistics
-BUCKET_BOUNDARIES = [0, 1, 10, 100, 500, 1000, 10000, 100000]
-BUCKET_LABELS = ['0', '1-10', '11-100', '101-500', '501-1000', '1001-10000', '10001-100000']
+BLOCKSIZE_BUCKET_BOUNDARIES = [0, 1, 10, 100, 500, 1000, 10000, 100000]
+BLOCKSIZE_BUCKET_LABELS = ['0', '1-10', '11-100', '101-500', '501-1000', '1001-10000', '10001-100000']
 
 DATAFRAME_COLUMNS = ['filetype', 'extension', 'blocks', 'birthtime', 'alive_for_periods', 'is_dead']
 EXTENSION_COL = DATAFRAME_COLUMNS[1]
@@ -50,7 +50,7 @@ def preprocess_data(end_time):
     df = pd.read_csv(FILENAME, sep='\t', header=None, names=DATAFRAME_COLUMNS, dtype={is_dead_index: bool})
 
     # add a column with the category (by blocksize)
-    cuts = pd.cut(df['blocks'], bins=BUCKET_BOUNDARIES, labels=BUCKET_LABELS)
+    cuts = pd.cut(df['blocks'], bins=BLOCKSIZE_BUCKET_BOUNDARIES, labels=BLOCKSIZE_BUCKET_LABELS)
     df['blocksize_category'] = cuts
 
     # add a column with the lifetime of the file
@@ -119,15 +119,15 @@ def blocksize_stats(df, label, verbose_mode):
     print('-%s-' % label)
 
     df_new = pd.DataFrame()
-    df_new['category'] = BUCKET_LABELS
+    df_new['category'] = BLOCKSIZE_BUCKET_LABELS
     mean_lifetime_list = []
     std_lifetime_list = []
     mean_alive_list = []
     std_alive_list = []
     count_list = []
 
-    for i in range(len(BUCKET_LABELS)):
-        df_filtered = df[df[BLOCKSIZE_CATEGORY_COL] == BUCKET_LABELS[i]]
+    for i in range(len(BLOCKSIZE_BUCKET_LABELS)):
+        df_filtered = df[df[BLOCKSIZE_CATEGORY_COL] == BLOCKSIZE_BUCKET_LABELS[i]]
         mean_alive_list.append(mean(df_filtered, ALIVE_FOR_COL))
         std_alive_list.append(stddev(df_filtered, ALIVE_FOR_COL))
         mean_lifetime_list.append(to_days(mean(df_filtered, TOTAL_LIFETIME_COL)))
@@ -135,7 +135,7 @@ def blocksize_stats(df, label, verbose_mode):
         count_list.append(len(df_filtered))
 
         if verbose_mode:
-            print('Block size: %s' % BUCKET_LABELS[i])
+            print('Block size: %s' % BLOCKSIZE_BUCKET_LABELS[i])
             print('count: %d' % len(df_filtered))
 
             print('mean for alive periods monitored (periods): ' + str(mean(df_filtered, ALIVE_FOR_COL)))
