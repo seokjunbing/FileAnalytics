@@ -217,18 +217,14 @@ def blocksize_stats(df, label, verbose_mode):
 
 def to_days(seconds):
     """
-    String for number of days in
-    :param seconds:
-    :return:
+    Seconds -> days
     """
     return seconds / 3600 / 24
 
 
-def filetype_stats(df):
+def filetype_stats(df: pd.DataFrame, label: str):
     """
-    Cluster files by type
-    :param df:
-    :return:
+    Cluster files by type and print age stats about each
     """
     f_tmp = ['tmp']
     f_config = ['plist']
@@ -256,18 +252,48 @@ def filetype_stats(df):
         print('\n')
 
 
-def filetype_histogram(df: pd.DataFrame):
-    # print(group)
-    # df_grouped = df.groupby(EXTENSION_COLUMN).count()
-    # print(df_grouped)
+def filetype_histogram(df: pd.DataFrame, mode: str, label: str):
+    """
+    Instead of clustering the files by type, get the top 20 file types
+    by count and do stats on those
+    """
     print('--HISTOGRAM--')
-    print('COUNT: %s' % len(df))
-    print(len(df))
-    dist = df[EXTENSION_COL].value_counts(dropna=False).head(20)
-    print(dist)
+    print('-%s-' % label)
+    dist: pd.Series = df[EXTENSION_COL].value_counts(dropna=False).head(20)
+    ext_list = []
+    mean_list = []
+    stddev_list = []
+    count_list = []
+
+    if mode == 'days':
+        for ext, count in dist.iteritems():
+            ext_list.append(ext)
+            count_list.append(count)
+            df_filtered = df[df[EXTENSION_COL] == ext]
+            mean_val = df_filtered[TOTAL_LIFETIME_DAYS_COL].dropna().mean()
+            stddev_val = df_filtered[TOTAL_LIFETIME_DAYS_COL].dropna().std()
+            mean_list.append(mean_val)
+            stddev_list.append(stddev_val)
+
+    elif mode == 'minutes':
+        for ext, count in dist.iteritems():
+            print(ext)
+            ext_list.append(ext)
+            count_list.append(count)
+            df_filtered = df[df[EXTENSION_COL] == ext]
+            mean_val = df_filtered[ALIVE_OBSERVED_MINUTES_COL].dropna().mean()
+            stddev_val = df_filtered[ALIVE_OBSERVED_MINUTES_COL].dropna().std()
+            mean_list.append(mean_val)
+            stddev_list.append(stddev_val)
+
+    df_stats = pd.DataFrame()
+    df_stats['extension'] = ext_list
+    df_stats['count'] = count_list
+    df_stats['age_mean_%s' % mode] = mean_list
+    df_stats['age_stddev_%s' % mode] = stddev_list
+
+    print(df_stats)
     print('\n')
-    plt.hist(dist)
-    plt.show()
 
 
 if __name__ == '__main__':
@@ -280,14 +306,13 @@ if __name__ == '__main__':
 
     preprocessed_fname = FILENAME + PREPROCESSED_SUFFIX
     if not path.isfile(preprocessed_fname):
-        # if STATE_CURRENT == state_read:
-        # df_all_files = get_dataframe(state_read, end_time)
         preprocess_data(end_time)
 
-    # elif STATE_CURRENT == state_process:
     df_all = get_dataframe(state_process, preprocessed_fname)
+    # exclude files older than two and a half years
     df_all = df_all[df_all[TOTAL_LIFETIME_DAYS_COL] <= years_twoandahalf]
     print('There are %d files in this dataset' % len(df_all))
+
     # files deleted during the monitoring period
     df_deleted = df_all[df_all[IS_DEAD_COL] == True]
     # files created and deleted during the monitoring period
@@ -296,7 +321,9 @@ if __name__ == '__main__':
     # that died _during_ the monitoring period
     df_not_created_and_deleted = df_deleted[~df_deleted.index.isin(df_created_and_deleted.index)]
 
-    # These don't work in a standalone python script, for some reason
+    # matplotlib is giving us a lot of trouble on standalone python scripts.
+    # See the attached notebook graphs.py.ipynb for our graph creation process
+
     # df_created_and_deleted.hist(column='alive_for_periods')
     # plt.plot()
 
@@ -304,18 +331,16 @@ if __name__ == '__main__':
 
     # blocksize
     blocksize_stats(df_all, 'ALL FILES', verbose)
-    blocksize_stats(df_deleted, 'FILES DELETED WHILE BEING MONITORED', verbose)
+    blocksize_stats(df_deleted, 'FILES CREATED AND DELETED WHILE BEING MONITORED', verbose)
     blocksize_stats(df_not_created_and_deleted, 'FILES CREATED BEFORE MONITORING, DELETED DURING MONITORING', verbose)
-    # # and filetype
-    # filetype_stats(df_all_files)
-    # filetype_stats(df_dead_files)
-    # # most common filetypes
-    # filetype_histogram(df_all_files)
-    # filetype_histogram(df_dead_files)
-    # filetype_histogram(df_alive_and_dead_files)
-
-    # print('ALIVE AND DEAD')
-    # print(df_dead_files[BIRTHTIME_COLUMN].dtype)
+    # age stats per filetype group (image files, developer files, temporary files, etc.)
+    filetype_stats(df_all, 'ALL FILES')
+    filetype_stats(df_created_and_deleted, 'FILES CREATED AND DELETED WHILE BEING MONITORED')
+    filetype_stats(df_not_created_and_deleted, 'FILES CREATED BEFORE MONITORING, DELETED DURING MONITORING')
+    # most common filetypes
+    filetype_histogram(df_all, 'days', 'ALL FILES')
+    filetype_histogram(df_not_created_and_deleted, 'days', 'FILES CREATED BEFORE MONITORING, DELETED DURING MONITORING')
+    filetype_histogram(df_created_and_deleted, 'minutes', 'FILES CREATED AND DELETED WHILE BEING MONITORED')
 
     print('Count of deleted files: %d' % len(df_deleted))
     print('Count of created and deleted files: %d' % len(df_created_and_deleted))
